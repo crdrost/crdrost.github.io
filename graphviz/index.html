@@ -213,7 +213,6 @@
       scale = window.devicePixelRatio || 1,
       downloadBtn = document.getElementById("download"),
       editor = document.getElementById('editor'),
-      lastHD = -1,
       worker = null,
       parser = new DOMParser(),
       showError = null,
@@ -223,6 +222,7 @@
       shareEl = document.querySelector("#share"),
       shareURLEl = document.querySelector("#shareurl"),
       errorEl = document.querySelector("#error");
+    let renderState = "done";
 
     function show_status(text, hide) {
       hide = hide || 0;
@@ -236,6 +236,7 @@
     }
 
     function show_error(e) {
+      renderState = "error";
       show_status("error", 500);
       reviewer.classList.remove("working");
       reviewer.classList.add("error");
@@ -322,6 +323,7 @@
     };
 
     function renderGraph() {
+      renderState = "working";
       reviewer.classList.add("working");
       reviewer.classList.remove("error");
 
@@ -364,6 +366,7 @@
     }
 
     function updateOutput(result) {
+      renderState = "done";
       if (formatEl.value === "svg") {
         document.querySelector("#raw").classList.remove("disabled");
         rawEl.disabled = false;
@@ -443,6 +446,25 @@
 
       updateState()
     }
+
+    let rerenderThread = -1;
+    editor.addEventListener('focus', function () {
+        clearTimeout(rerenderThread);
+        let oldValue = editor.value;
+        rerenderThread = setTimeout(function checkChange() {
+            if (renderState !== "working") {
+              const newValue = editor.value;
+              if (newValue !== oldValue) {
+                setTimeout(renderGraph, 0);
+                oldValue = newValue;
+              }
+            }
+            rerenderThread = setTimeout(checkChange, 250);
+        }, 250);
+    });
+    editor.addEventListener('blur', function () {
+        clearTimeout(rerenderThread);
+    });
 
     window.onpopstate = function(event) {
       if (event.state != null && event.state.content != undefined) {
